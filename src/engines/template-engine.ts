@@ -1,4 +1,4 @@
-import { NotificationChannel } from '../types/notification.js';
+import { NotificationChannel } from "../types/notification.js";
 
 export interface TemplateContent {
   title: string;
@@ -20,7 +20,7 @@ export class TemplateEngine {
 
   public register(template: NotificationTemplate): void {
     if (!template.id) {
-      throw new Error('Template must have a non-empty ID');
+      throw new Error("Template must have a non-empty ID");
     }
     this.templates.set(template.id, template);
   }
@@ -38,17 +38,25 @@ export class TemplateEngine {
   public render(
     templateId: string,
     variables: Record<string, unknown> = {},
-    locale?: string
-  ): { title: string; body: string; defaultChannels?: NotificationChannel[]; data?: Record<string, unknown>; resolvedLocale?: string } {
+    locale?: string,
+  ): {
+    title: string;
+    body: string;
+    defaultChannels?: NotificationChannel[];
+    data?: Record<string, unknown>;
+    resolvedLocale?: string;
+  } {
     const template = this.templates.get(templateId);
     if (!template) {
-      throw new Error(`Notification template with ID "${templateId}" not found`);
+      throw new Error(
+        `Notification template with ID "${templateId}" not found`,
+      );
     }
 
     // Resolve localized content
     let rawTitle = template.title;
     let rawBody = template.body;
-    let resolvedLocale = template.defaultLocale || 'en';
+    let resolvedLocale = template.defaultLocale || "en";
 
     if (locale && template.locales && template.locales[locale]) {
       rawTitle = template.locales[locale].title;
@@ -72,21 +80,24 @@ export class TemplateEngine {
    * 3. HTML-escaped output: {{path}}
    * 4. Nested object paths: user.profile.name
    */
-  public interpolate(text?: string, variables: Record<string, unknown> = {}): string {
-    if (!text) return '';
+  public interpolate(
+    text: string,
+    variables: Record<string, unknown> = {},
+  ): string {
     // 1. Process conditionals: {{#if path}}then_block{{else}}else_block{{/if}}
-    const ifRegex = /{{\s*#if\s+([a-zA-Z0-9_.]+)\s*}}([\s\S]*?)(?:{{\s*else\s*}}([\s\S]*?))?{{\s*\/if\s*}}/g;
+    const ifRegex =
+      /{{\s*#if\s+([a-zA-Z0-9_.]+)\s*}}([\s\S]*?)(?:{{\s*else\s*}}([\s\S]*?))?{{\s*\/if\s*}}/g;
     let processed = text.replace(ifRegex, (_, path, thenBlock, elseBlock) => {
       const val = this.resolvePath(variables, path);
       const isTruthy = Boolean(val && (!Array.isArray(val) || val.length > 0));
-      return isTruthy ? thenBlock : (elseBlock || '');
+      return isTruthy ? thenBlock : elseBlock || "";
     });
 
     // 2. Process raw unescaped placeholders: {{{path}}}
     const rawRegex = /{{{\s*([a-zA-Z0-9_.]+)\s*}}}/g;
     processed = processed.replace(rawRegex, (_, path) => {
       const val = this.resolvePath(variables, path);
-      return val !== undefined && val !== null ? String(val) : '';
+      return val !== undefined && val !== null ? String(val) : "";
     });
 
     // 3. Process escaped placeholders: {{path}}
@@ -103,10 +114,10 @@ export class TemplateEngine {
   }
 
   private resolvePath(obj: Record<string, unknown>, path: string): unknown {
-    if (!obj || typeof obj !== 'object') return undefined;
+    if (!obj || typeof obj !== "object") return undefined;
     if (path in obj) return obj[path];
 
-    const parts = path.split('.');
+    const parts = path.split(".");
     let current: any = obj;
 
     for (const part of parts) {
@@ -121,11 +132,11 @@ export class TemplateEngine {
 
   private escapeHtml(str: string): string {
     return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   public has(id: string): boolean {
