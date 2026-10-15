@@ -771,11 +771,11 @@ npm run build
 
 **Md Rakibur Rahman**
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Md_Rakibur_Rahman-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/rakiburrahman307/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Md_Rakibur_Rahman-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/iamrakiburrahman/)
 [![GitHub](https://img.shields.io/badge/GitHub-rakiburrahman307-181717?style=flat-square&logo=github)](https://github.com/rakiburrahman307)
 [![Email](https://img.shields.io/badge/Email-rakiburrahman.dev@gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:rakiburrahman.dev@gmail.com)
 
-* **LinkedIn**: [linkedin.com/in/rakiburrahman307](https://www.linkedin.com/in/rakiburrahman307/)
+* **LinkedIn**: [linkedin.com/in/iamrakiburrahman](https://www.linkedin.com/in/iamrakiburrahman/)
 * **GitHub**: [@rakiburrahman307](https://github.com/rakiburrahman307)
 * **Email**: [rakiburrahman.dev@gmail.com](mailto:rakiburrahman.dev@gmail.com)
 
