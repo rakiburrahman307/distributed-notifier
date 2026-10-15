@@ -1,17 +1,16 @@
-# 📦 distributed-notifier
+# distributed-notifier
 
-[![npm version](https://img.shields.io/badge/npm-v1.0.0-blue?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/distributed-notifier)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0_Strict-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Zero-Dependency Core](https://img.shields.io/badge/Zero--Setup-In--Memory_or_Redis-success?style=for-the-badge)]()
-[![Build & Test](https://img.shields.io/badge/Tests-38%20Passed-success?style=for-the-badge)]()
-[![CI Status](https://img.shields.io/badge/CI-Passing-brightgreen?style=for-the-badge&logo=githubactions)](https://github.com/rakiburrahman307/distributed-notifier/actions)
+[![npm version](https://img.shields.io/npm/v/distributed-notifier.svg?style=flat-square&color=0284c7)](https://www.npmjs.com/package/distributed-notifier)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0_Strict-3178c6.svg?style=flat-square)](https://www.typescriptlang.org/)
+[![Build & Test](https://img.shields.io/badge/Tests-38_Passing-10b981.svg?style=flat-square)]()
+[![CI Status](https://img.shields.io/badge/CI-Passing-10b981.svg?style=flat-square)](https://github.com/rakiburrahman307/distributed-notifier/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg?style=flat-square)](LICENSE)
 
 **A production-grade, distributed notification engine engineered for high-throughput, fault-tolerant delivery across Push (FCM/APNs), In-App WebSockets, Email, SMS, and Webhooks.**
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 1. [Package Overview](#1-package-overview)
 2. [Key Architectural Highlights](#2-key-architectural-highlights)
@@ -166,7 +165,7 @@ packages/distributed-notifier/
 </p>
 
 <details>
-<summary>🔍 View Mermaid Source</summary>
+<summary>View Diagram Source</summary>
 
 ```mermaid
 graph TD
@@ -219,7 +218,7 @@ graph TD
 </p>
 
 <details>
-<summary>🔍 View Mermaid Source</summary>
+<summary>View Diagram Source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -260,7 +259,7 @@ sequenceDiagram
 </p>
 
 <details>
-<summary>🔍 View Mermaid Source</summary>
+<summary>View Diagram Source</summary>
 
 ```mermaid
 flowchart TD
@@ -303,7 +302,7 @@ flowchart TD
 </p>
 
 <details>
-<summary>🔍 View Mermaid Source</summary>
+<summary>View Diagram Source</summary>
 
 ```mermaid
 stateDiagram-v2
@@ -339,7 +338,7 @@ stateDiagram-v2
 </p>
 
 <details>
-<summary>🔍 View Mermaid Source</summary>
+<summary>View Diagram Source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -375,7 +374,7 @@ sequenceDiagram
 </p>
 
 <details>
-<summary>🔍 View Mermaid Source</summary>
+<summary>View Diagram Source</summary>
 
 ```mermaid
 flowchart TD
