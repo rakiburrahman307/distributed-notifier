@@ -40,7 +40,8 @@
 9. [Adding Custom Providers](#9-adding-custom-providers)
 10. [Resource Safety & Memory Guarantees](#10-resource-safety--memory-guarantees)
 11. [Testing & Verification](#11-testing--verification)
-12. [License](#12-license)
+12. [Author & Maintainer](#12-author--maintainer)
+13. [License](#13-license)
 
 ---
 
@@ -766,6 +767,20 @@ npm run build
 
 ---
 
-## 12. License
+## 12. Author & Maintainer
 
-Distributed under the **MIT License**.
+**Md Rakibur Rahman**
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Md_Rakibur_Rahman-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/rakiburrahman307/)
+[![GitHub](https://img.shields.io/badge/GitHub-rakiburrahman307-181717?style=flat-square&logo=github)](https://github.com/rakiburrahman307)
+[![Email](https://img.shields.io/badge/Email-rakiburrahman.dev@gmail.com-D14836?style=flat-square&logo=gmail&logoColor=white)](mailto:rakiburrahman.dev@gmail.com)
+
+* **LinkedIn**: [linkedin.com/in/rakiburrahman307](https://www.linkedin.com/in/rakiburrahman307/)
+* **GitHub**: [@rakiburrahman307](https://github.com/rakiburrahman307)
+* **Email**: [rakiburrahman.dev@gmail.com](mailto:rakiburrahman.dev@gmail.com)
+
+---
+
+## 13. License
+
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.

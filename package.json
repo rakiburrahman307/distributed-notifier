@@ -55,7 +55,11 @@
     "novu-alternative",
     "knock-alternative"
   ],
-  "author": "Md Rakibur Rahman",
+  "author": {
+    "name": "Md Rakibur Rahman",
+    "email": "rakiburrahman.dev@gmail.com",
+    "url": "https://www.linkedin.com/in/rakiburrahman307/"
+  },
   "license": "MIT",
   "dependencies": {
     "zod": "^3.23.8"
