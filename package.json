@@ -1,6 +1,6 @@
 {
   "name": "distributed-notifier",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Production-grade, distributed notification engine supporting multi-channel delivery, dual in-memory/BullMQ queues, smart fallbacks, rate limiting, deduplication, and digest batching.",
   "main": "dist/index.js",
   "module": "dist/index.js",
