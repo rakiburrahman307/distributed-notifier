@@ -1,5 +1,5 @@
 // Main Orchestrator Service
-export { Notifier, type NotifierEventMap } from './services/notifier.service.js';
+export { Notifier, Notifier as NotifierService, type NotifierEventMap } from './services/notifier.service.js';
 export { FallbackRouter } from './services/fallback-router.js';
 
 // Providers

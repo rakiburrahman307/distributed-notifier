@@ -72,7 +72,8 @@ export class TemplateEngine {
    * 3. HTML-escaped output: {{path}}
    * 4. Nested object paths: user.profile.name
    */
-  public interpolate(text: string, variables: Record<string, unknown> = {}): string {
+  public interpolate(text?: string, variables: Record<string, unknown> = {}): string {
+    if (!text) return '';
     // 1. Process conditionals: {{#if path}}then_block{{else}}else_block{{/if}}
     const ifRegex = /{{\s*#if\s+([a-zA-Z0-9_.]+)\s*}}([\s\S]*?)(?:{{\s*else\s*}}([\s\S]*?))?{{\s*\/if\s*}}/g;
     let processed = text.replace(ifRegex, (_, path, thenBlock, elseBlock) => {
