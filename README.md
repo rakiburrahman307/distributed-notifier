@@ -30,7 +30,7 @@
    - [8.1 Asynchronous Background Dispatch (`dispatch`)](#81-asynchronous-background-dispatch-dispatch)
    - [8.2 Direct Synchronous Delivery (`sendSync`)](#82-direct-synchronous-delivery-sendsync)
    - [8.3 Category & Topic Preferences (Opt-Out with Security Override)](#83-category--topic-preferences-opt-out-with-security-override)
-   - [8.4 Advanced Template Engine (HTML Emails, Conditionals, i18n)](#84-advanced-template-engine-html-emails-conditionals-i18n)
+   - [8.4 Reusable Multi-Channel Template Guide (HTML Email, SMS, Push, In-App, Webhook)](#84-reusable-multi-channel-template-guide-html-email-sms-push-in-app-webhook)
    - [8.5 Provider Traffic Shaping & Backpressure](#85-provider-traffic-shaping--backpressure)
    - [8.6 Durable Dead Letter Queue (DLQ) Inspection](#86-durable-dead-letter-queue-dlq-inspection)
    - [8.7 Bounded Bulk Delivery (`sendBulk`)](#87-bounded-bulk-delivery-sendbulk)
@@ -529,18 +529,22 @@ console.log(alertResult.status); // "SENT"
 
 ---
 
-### 8.4 Advanced Template Engine (HTML Emails, Conditionals, i18n)
+### 8.4 Reusable Multi-Channel Template Guide (HTML Email, SMS, Push, In-App, Webhook)
+
+Templates decouple message layout and copywriting from your backend business logic. Register templates once with dynamic placeholders (`{{variable}}`, `{{{rawUrl}}}`, `{{#if condition}}`), and trigger them from anywhere using `templateId`.
+
+---
 
 #### 8.4.1 Rich HTML Email Templates (Resend / SendGrid / Nodemailer)
 
-The template engine supports full HTML markup, conditional rendering (`{{#if}}...{{else}}...{{/if}}`), safe escaping (`{{user.name}}`), and raw unescaped URLs (`{{{activationUrl}}}`):
+Supports styled HTML layouts, buttons, conditionals (`{{#if isVip}}`), and raw unescaped URLs (`{{{activationUrl}}}`):
 
 ```typescript
 import { Notifier, EmailProvider } from 'distributed-notifier';
 
 const notifier = new Notifier();
 
-// 1. Register an HTML Email Template
+// Step 1: Register Reusable HTML Template
 notifier.registerTemplate({
   id: 'welcome_email',
   defaultChannels: ['email'],
@@ -548,11 +552,11 @@ notifier.registerTemplate({
   body: `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f8fafc; border-radius: 8px;">
       <h2 style="color: #0f172a;">Hello, {{user.name}}!</h2>
-      <p style="color: #475569; font-size: 16px;">Thank you for creating an account with us.</p>
+      <p style="color: #475569; font-size: 16px;">Thank you for signing up with us.</p>
       
       {{#if isVip}}
         <p style="color: #d97706; font-weight: bold; background: #fef3c7; padding: 8px 12px; border-radius: 4px;">
-          VIP Status Active: Priority Support Unlocked!
+          VIP Membership Activated: Priority Access Unlocked!
         </p>
       {{/if}}
 
@@ -566,15 +570,15 @@ notifier.registerTemplate({
   `,
 });
 
-// 2. Register Email Provider (e.g. Resend, SendGrid, or Nodemailer)
+// Step 2: Register Email Provider
 notifier.registerProvider(
   new EmailProvider({
     name: 'resend-mailer',
-    from: 'Acme <notifications@acme.com>',
+    from: 'Acme Team <no-reply@acme.com>',
     sender: async (to, subject, htmlBody) => {
-      // htmlBody contains the fully interpolated HTML markup!
+      // htmlBody receives the fully rendered HTML string
       const res = await resend.emails.send({
-        from: 'Acme <notifications@acme.com>',
+        from: 'Acme Team <no-reply@acme.com>',
         to,
         subject,
         html: htmlBody,
@@ -584,13 +588,10 @@ notifier.registerProvider(
   })
 );
 
-// 3. Dispatch the Email Notification
+// Step 3: Dispatch in Background (~2ms)
 await notifier.dispatch({
   id: 'welcome_user_1',
-  recipient: {
-    id: 'user_1',
-    email: 'alex@example.com',
-  },
+  recipient: { id: 'user_1', email: 'alex@example.com' },
   channels: ['email'],
   templateId: 'welcome_email',
   variables: {
@@ -601,35 +602,259 @@ await notifier.dispatch({
 });
 ```
 
-#### 8.4.2 Multi-Language (i18n) & Push Templates
+---
+
+#### 8.4.2 SMS OTP & Transaction Alert Templates (Twilio / Infobip)
+
+SMS messages require compact, character-efficient formatting with security codes and expiration timers:
+
+```typescript
+import { Notifier, SmsProvider } from 'distributed-notifier';
+
+const notifier = new Notifier();
+
+// Step 1: Register SMS Template
+notifier.registerTemplate({
+  id: 'sms_otp_verification',
+  defaultChannels: ['sms'],
+  title: 'Security Verification',
+  body: 'Your {{app.name}} verification code is {{otp.code}}. Valid for {{otp.expiresMinutes}} minutes. Do not share this code with anyone.',
+});
+
+// Step 2: Register SMS Provider
+notifier.registerProvider(
+  new SmsProvider({
+    name: 'twilio-sms',
+    from: '+18005550199',
+    sender: async (to, body) => {
+      // Send via Twilio or any SMS gateway
+      const message = await twilioClient.messages.create({
+        to,
+        from: '+18005550199',
+        body,
+      });
+      return { success: true, messageId: message.sid };
+    },
+  })
+);
+
+// Step 3: Send Directly (Synchronous OTP Verification)
+const result = await notifier.sendSync({
+  id: 'otp_req_99',
+  priority: 'HIGH', // High priority bypasses quiet hours
+  recipient: { id: 'usr_88', phone: '+1234567890' },
+  channels: ['sms'],
+  templateId: 'sms_otp_verification',
+  variables: {
+    app: { name: 'DistributedApp' },
+    otp: { code: '849201', expiresMinutes: 5 },
+  },
+});
+
+console.log(result.status); // "SENT"
+```
+
+---
+
+#### 8.4.3 Mobile Push Notification Templates (Firebase FCM / Apple APNs)
+
+Push templates format titles, bodies, and custom deep-linking metadata for mobile devices:
+
+```typescript
+import { Notifier, PushProvider } from 'distributed-notifier';
+
+const notifier = new Notifier();
+
+// Step 1: Register Push Template with deep-link metadata
+notifier.registerTemplate({
+  id: 'order_status_push',
+  defaultChannels: ['push'],
+  title: 'Order #{{order.id}} {{order.status}}!',
+  body: 'Hi {{user.name}}, your driver {{driver.name}} is {{driver.etaMinutes}} minutes away.',
+  data: {
+    screen: 'order_tracking',
+    trackingUrl: 'myapp://orders/track',
+  },
+});
+
+// Step 2: Register FCM Push Provider with Multicast support
+notifier.registerProvider(
+  new PushProvider({
+    name: 'firebase-fcm',
+    sender: async (tokens, notification) => {
+      // Automatically batches up to 500 device tokens per network roundtrip
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens,
+        notification: {
+          title: notification.title,
+          body: notification.body,
+        },
+        data: {
+          screen: String(notification.data?.screen || ''),
+        },
+      });
+      return { success: response.failureCount === 0, messageId: `fcm_${Date.now()}` };
+    },
+  })
+);
+
+// Step 3: Dispatch Push Notification
+await notifier.dispatch({
+  id: 'push_order_status',
+  recipient: {
+    id: 'customer_77',
+    pushTokens: ['fcm_device_token_abc', 'apns_device_token_xyz'],
+  },
+  channels: ['push'],
+  templateId: 'order_status_push',
+  variables: {
+    user: { name: 'Sarah' },
+    order: { id: 'ORD-5481', status: 'Dispatched' },
+    driver: { name: 'David', etaMinutes: 12 },
+  },
+});
+```
+
+---
+
+#### 8.4.4 Real-Time In-App & WebSocket Templates (Socket.io / ws)
+
+For real-time dashboard notifications, bell badges, and live banner alerts:
+
+```typescript
+import { Notifier, SocketProvider } from 'distributed-notifier';
+
+const notifier = new Notifier();
+
+// Step 1: Register In-App Template
+notifier.registerTemplate({
+  id: 'in_app_badge_unlocked',
+  defaultChannels: ['in_app'],
+  title: 'Achievement Unlocked!',
+  body: 'Congratulations {{user.name}}! You earned the "{{badge.title}}" badge.',
+  data: {
+    type: 'toast',
+    iconUrl: 'https://cdn.example.com/icons/trophy.png',
+  },
+});
+
+// Step 2: Register Socket Provider connected to your WebSocket Server
+notifier.registerProvider(
+  new SocketProvider({
+    name: 'socket-io',
+    emitter: async (userId, event, payload) => {
+      // Emit to recipient's dedicated Socket.io room
+      io.to(`user:${userId}`).emit('notification:received', {
+        title: payload.title,
+        body: payload.body,
+        data: payload.data,
+        timestamp: Date.now(),
+      });
+      return { success: true, messageId: `sock_${Date.now()}` };
+    },
+  })
+);
+
+// Step 3: Dispatch In-App Event
+await notifier.dispatch({
+  id: 'achieve_88',
+  recipient: { id: 'user_42' },
+  channels: ['in_app'],
+  templateId: 'in_app_badge_unlocked',
+  variables: {
+    user: { name: 'Michael' },
+    badge: { title: 'Early Adopter' },
+  },
+});
+```
+
+---
+
+#### 8.4.5 Webhook Notification Templates (Slack, Discord & Custom APIs)
+
+Deliver structured notification payloads to external team channels or microservice endpoints:
+
+```typescript
+import { Notifier, WebhookProvider } from 'distributed-notifier';
+
+const notifier = new Notifier();
+
+// Step 1: Register Webhook Template
+notifier.registerTemplate({
+  id: 'slack_incident_alert',
+  defaultChannels: ['webhook'],
+  title: 'Critical Incident: {{service.name}}',
+  body: 'Service {{service.name}} reported error: {{incident.message}} in region {{service.region}}.',
+});
+
+// Step 2: Register Webhook Provider
+notifier.registerProvider(
+  new WebhookProvider({
+    name: 'slack-incidents',
+    headers: { Authorization: 'Bearer xoxb-slack-bot-token' },
+    timeoutMs: 5000,
+  })
+);
+
+// Step 3: Dispatch to dynamic Slack or Discord URL
+await notifier.dispatch({
+  id: 'incident_911',
+  priority: 'HIGH',
+  recipient: { id: 'devops_oncall' },
+  channels: ['webhook'],
+  templateId: 'slack_incident_alert',
+  metadata: {
+    webhookUrl: 'https://hooks.slack.com/services/T00/B00/XXXX',
+  },
+  variables: {
+    service: { name: 'Payment Gateway', region: 'us-east-1' },
+    incident: { message: 'Database connection pool exhausted' },
+  },
+});
+```
+
+---
+
+#### 8.4.6 Multi-Language (i18n) Localization & Fallbacks
+
+Provide language translations with automatic fallback to `defaultLocale` if a key or language is omitted:
 
 ```typescript
 notifier.registerTemplate({
   id: 'trip_receipt',
   defaultLocale: 'en',
   title: 'Trip #{{trip.id}} Receipt',
-  body: 'Hello {{user.profile.name}}, your fare was ${{trip.fare.total}}. {{#if isVip}}Thank you for being a VIP!{{else}}Join VIP for 10% off!{{/if}}',
+  body: 'Hello {{user.name}}, your fare was ${{trip.fare.total}}. {{#if isVip}}Thank you for being a VIP!{{else}}Join VIP for 10% off!{{/if}}',
   locales: {
     bn: {
       title: 'ট্রিপ #{{trip.id}} রসিদ',
-      body: 'হ্যালো {{user.profile.name}}, আপনার ভাড়া ${{trip.fare.total}}। {{#if isVip}}ভিআইপি হওয়ার জন্য ধন্যবাদ!{{else}}১০% ছাড়ের জন্য ভিআইপিতে যোগ দিন!{{/if}}',
+      body: 'হ্যালো {{user.name}}, আপনার ভাড়া ${{trip.fare.total}}। {{#if isVip}}ভিআইপি হওয়ার জন্য ধন্যবাদ!{{else}}১০% ছাড়ের জন্য ভিআইপিতে যোগ দিন!{{/if}}',
+    },
+    es: {
+      title: 'Recibo del viaje #{{trip.id}}',
+      body: 'Hola {{user.name}}, tu tarifa fue de ${{trip.fare.total}}.',
     },
   },
 });
 
-// Render in Bengali:
+// Automatically renders in Bengali based on recipient locale:
 const res = await notifier.sendSync({
-  id: 'receipt_1',
+  id: 'receipt_bn_1',
   templateId: 'trip_receipt',
-  locale: 'bn',
-  recipient: { id: 'u_1', pushTokens: ['tok_1'] },
+  recipient: {
+    id: 'u_1',
+    locale: 'bn', // Triggers Bengali template
+    pushTokens: ['device_token_123'],
+  },
   channels: ['push'],
   variables: {
-    user: { profile: { name: 'রাকিবুর' } },
-    trip: { id: 'TRIP_88', fare: { total: 250 } },
+    user: { name: 'রাকিবুর' },
+    trip: { id: 'TRIP-99', fare: { total: 250 } },
     isVip: true,
   },
 });
+
+console.log(res.status); // "SENT"
 ```
 
 ---
