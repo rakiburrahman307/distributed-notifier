@@ -1,8 +1,8 @@
 import {
-  NotifierService,
+  Notifier,
   MockProvider,
   WebhookProvider,
-  NotificationPayload,
+  type NotificationPayload,
 } from '../src/index.js';
 
 async function main() {
@@ -11,17 +11,25 @@ async function main() {
   console.log('='.repeat(65));
 
   // 1. Initialize Notifier in Zero-Setup In-Memory Mode
-  const notifier = new NotifierService({
-    mode: 'in-memory',
-    enableDeduplication: true,
-    enableRateLimiting: true,
-    rateLimiting: { maxPerWindow: 20, windowSeconds: 60 },
+  const notifier = new Notifier({
+    mode: 'memory',
+    deduplication: { enabled: true, ttlSeconds: 300 },
+    rateLimit: { enabled: true, maxPerWindow: 20, windowSeconds: 60 },
   });
 
   // 2. Register Lifecycle Listeners
-  notifier.on('dispatched', (result) => console.log(`  [EVENT: DISPATCHED] -> Job ID: ${result.jobId}`));
-  notifier.on('delivered', (result) => console.log(`  [EVENT: DELIVERED]  -> Notification: ${result.notificationId} via ${result.channelResults.find(r => r.success)?.channel}`));
-  notifier.on('suppressed', (event) => console.log(`  [EVENT: SUPPRESSED] -> Reason: ${event.reason}`));
+  notifier.on('dispatched', (result) => {
+    console.log(`  [EVENT: DISPATCHED] -> Job ID: ${result.jobId}`);
+  });
+
+  notifier.on('delivered', (result) => {
+    const successChannel = result.channelResults.find((r) => r.success)?.channel;
+    console.log(`  [EVENT: DELIVERED]  -> Notification: ${result.notificationId} via ${successChannel}`);
+  });
+
+  notifier.on('suppressed', (event) => {
+    console.log(`  [EVENT: SUPPRESSED] -> Reason: ${event.reason}`);
+  });
 
   // 3. Register Providers
   // Primary Push Provider (Simulating a temporary outage to test Fallback)
@@ -49,7 +57,7 @@ async function main() {
     new WebhookProvider({
       name: 'slack-alerts',
       sender: async (url, payload) => {
-        console.log(`  [WEBHOOK MOCK] Delivered to ${url} -> Title: "${payload.content?.title}"`);
+        console.log(`  [WEBHOOK MOCK] Delivered to ${url} -> Title: "${payload.title}"`);
         return { success: true, messageId: 'msg_webhook_123' };
       },
     })
@@ -73,11 +81,10 @@ async function main() {
     priority: 'HIGH',
     recipient: {
       id: 'usr_rakib_101',
-      name: 'Rakibur Rahman',
       phone: '+8801700000000',
     },
     templateId: 'order_shipped_otp',
-    templateData: {
+    variables: {
       user: { name: 'Rakibur Rahman' },
       orderId: 'ORD-9842',
       trackingUrl: 'https://store.example.com/track/9842',
@@ -96,7 +103,7 @@ async function main() {
     channels: ['sms'],
     idempotencyKey: 'idemp_txn_999',
     recipient: { id: 'usr_rakib_101', phone: '+8801700000000' },
-    content: { body: 'Your payment of $49.00 was successful.' },
+    body: 'Your payment of $49.00 was successful.',
   });
   console.log(`First dispatch status:  ${firstSend.status}`);
 
@@ -105,7 +112,7 @@ async function main() {
     channels: ['sms'],
     idempotencyKey: 'idemp_txn_999', // Duplicate key!
     recipient: { id: 'usr_rakib_101', phone: '+8801700000000' },
-    content: { body: 'Your payment of $49.00 was successful.' },
+    body: 'Your payment of $49.00 was successful.',
   });
   console.log(`Second dispatch status: ${secondSend.status} (Safely Suppressed!)`);
 
@@ -123,7 +130,7 @@ async function main() {
         topics: { marketing: false }, // Opted out of marketing
       },
     },
-    content: { body: '50% off on all items! Buy now.' },
+    body: '50% off on all items! Buy now.',
   });
   console.log(`Marketing dispatch status: ${promoSend.status} (Suppressed by Preferences!)`);
 
