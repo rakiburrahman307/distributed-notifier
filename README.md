@@ -161,6 +161,13 @@ packages/distributed-notifier/
 
 ### 5.1 High-Level Distributed Architecture
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rakiburrahman307/distributed-notifier/main/assets/diagrams/01-architecture.svg" alt="High-Level Distributed Architecture" width="100%" />
+</p>
+
+<details>
+<summary>🔍 View Mermaid Source</summary>
+
 ```mermaid
 graph TD
     App["Your Application (Express / NestJS / Fastify)"] -->|"notifier.dispatch(payload)"| Core["Notifier Service Facade"]
@@ -201,10 +208,18 @@ graph TD
         DLQ -->|Memory Mode| MemDLQ["In-Memory Map DLQ"]
     end
 ```
+</details>
 
 ---
 
 ### 5.2 Asynchronous Dispatch vs Synchronous Delivery
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rakiburrahman307/distributed-notifier/main/assets/diagrams/02-dispatch-flow.svg" alt="Asynchronous Dispatch vs Synchronous Delivery" width="100%" />
+</p>
+
+<details>
+<summary>🔍 View Mermaid Source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -234,10 +249,18 @@ sequenceDiagram
     P-->>N: DeliveryResult
     N-->>Client: NotificationResult { status: "SENT", deliveredAt: Date }
 ```
+</details>
 
 ---
 
 ### 5.3 Notification Lifecycle Flow
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rakiburrahman307/distributed-notifier/main/assets/diagrams/03-lifecycle.svg" alt="Notification Lifecycle Flow" width="100%" />
+</p>
+
+<details>
+<summary>🔍 View Mermaid Source</summary>
 
 ```mermaid
 flowchart TD
@@ -269,10 +292,18 @@ flowchart TD
     FallbackSuccess -->|Yes| DonePartial["Return status: PARTIALLY_DELIVERED"]
     FallbackSuccess -->|No| PushDLQ
 ```
+</details>
 
 ---
 
 ### 5.4 Circuit Breaker State Machine
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rakiburrahman307/distributed-notifier/main/assets/diagrams/04-circuit-breaker.svg" alt="Circuit Breaker State Machine" width="100%" />
+</p>
+
+<details>
+<summary>🔍 View Mermaid Source</summary>
 
 ```mermaid
 stateDiagram-v2
@@ -297,10 +328,18 @@ stateDiagram-v2
       Prevents downstream stampede.
     end note
 ```
+</details>
 
 ---
 
 ### 5.5 Retry, Fallback & Dead Letter Queue (DLQ)
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rakiburrahman307/distributed-notifier/main/assets/diagrams/05-retry-dlq.svg" alt="Retry, Fallback & Dead Letter Queue" width="100%" />
+</p>
+
+<details>
+<summary>🔍 View Mermaid Source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -325,10 +364,18 @@ sequenceDiagram
         end
     end
 ```
+</details>
 
 ---
 
 ### 5.6 Graceful Shutdown & Resource Lifecycle
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rakiburrahman307/distributed-notifier/main/assets/diagrams/06-shutdown.svg" alt="Graceful Shutdown & Resource Lifecycle" width="100%" />
+</p>
+
+<details>
+<summary>🔍 View Mermaid Source</summary>
 
 ```mermaid
 flowchart TD
@@ -344,6 +391,7 @@ flowchart TD
     CloseDLQ --> CloseProviders["Close Provider Traffic Shapers & Breakers"]
     CloseProviders --> ShutdownComplete(["All Handles Cleaned Up Cleanly"])
 ```
+</details>
 
 ---
 
