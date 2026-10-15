@@ -30,7 +30,7 @@
    - [8.1 Asynchronous Background Dispatch (`dispatch`)](#81-asynchronous-background-dispatch-dispatch)
    - [8.2 Direct Synchronous Delivery (`sendSync`)](#82-direct-synchronous-delivery-sendsync)
    - [8.3 Category & Topic Preferences (Opt-Out with Security Override)](#83-category--topic-preferences-opt-out-with-security-override)
-   - [8.4 Advanced Template Engine (Nested Paths, Conditionals, i18n)](#84-advanced-template-engine-nested-paths-conditionals-i18n)
+   - [8.4 Advanced Template Engine (HTML Emails, Conditionals, i18n)](#84-advanced-template-engine-html-emails-conditionals-i18n)
    - [8.5 Provider Traffic Shaping & Backpressure](#85-provider-traffic-shaping--backpressure)
    - [8.6 Durable Dead Letter Queue (DLQ) Inspection](#86-durable-dead-letter-queue-dlq-inspection)
    - [8.7 Bounded Bulk Delivery (`sendBulk`)](#87-bounded-bulk-delivery-sendbulk)
@@ -529,7 +529,79 @@ console.log(alertResult.status); // "SENT"
 
 ---
 
-### 8.4 Advanced Template Engine (Nested Paths, Conditionals, i18n)
+### 8.4 Advanced Template Engine (HTML Emails, Conditionals, i18n)
+
+#### 8.4.1 Rich HTML Email Templates (Resend / SendGrid / Nodemailer)
+
+The template engine supports full HTML markup, conditional rendering (`{{#if}}...{{else}}...{{/if}}`), safe escaping (`{{user.name}}`), and raw unescaped URLs (`{{{activationUrl}}}`):
+
+```typescript
+import { Notifier, EmailProvider } from 'distributed-notifier';
+
+const notifier = new Notifier();
+
+// 1. Register an HTML Email Template
+notifier.registerTemplate({
+  id: 'welcome_email',
+  defaultChannels: ['email'],
+  title: 'Welcome aboard, {{user.name}}!',
+  body: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f8fafc; border-radius: 8px;">
+      <h2 style="color: #0f172a;">Hello, {{user.name}}!</h2>
+      <p style="color: #475569; font-size: 16px;">Thank you for creating an account with us.</p>
+      
+      {{#if isVip}}
+        <p style="color: #d97706; font-weight: bold; background: #fef3c7; padding: 8px 12px; border-radius: 4px;">
+          VIP Status Active: Priority Support Unlocked!
+        </p>
+      {{/if}}
+
+      <div style="margin-top: 24px;">
+        <a href="{{{activationUrl}}}" style="background: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+          Verify Email Address
+        </a>
+      </div>
+      <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">Button not working? Paste this link: {{{activationUrl}}}</p>
+    </div>
+  `,
+});
+
+// 2. Register Email Provider (e.g. Resend, SendGrid, or Nodemailer)
+notifier.registerProvider(
+  new EmailProvider({
+    name: 'resend-mailer',
+    from: 'Acme <notifications@acme.com>',
+    sender: async (to, subject, htmlBody) => {
+      // htmlBody contains the fully interpolated HTML markup!
+      const res = await resend.emails.send({
+        from: 'Acme <notifications@acme.com>',
+        to,
+        subject,
+        html: htmlBody,
+      });
+      return { success: !res.error, messageId: res.data?.id };
+    },
+  })
+);
+
+// 3. Dispatch the Email Notification
+await notifier.dispatch({
+  id: 'welcome_user_1',
+  recipient: {
+    id: 'user_1',
+    email: 'alex@example.com',
+  },
+  channels: ['email'],
+  templateId: 'welcome_email',
+  variables: {
+    user: { name: 'Alex Johnson' },
+    isVip: true,
+    activationUrl: 'https://acme.com/verify?token=xyz123abc&email=alex@example.com',
+  },
+});
+```
+
+#### 8.4.2 Multi-Language (i18n) & Push Templates
 
 ```typescript
 notifier.registerTemplate({
