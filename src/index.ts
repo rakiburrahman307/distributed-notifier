@@ -1,5 +1,5 @@
 // Main Orchestrator Service
-export { Notifier } from './services/notifier.service.js';
+export { Notifier, type NotifierEventMap } from './services/notifier.service.js';
 export { FallbackRouter } from './services/fallback-router.js';
 
 // Providers
@@ -8,6 +8,7 @@ export { PushProvider, type PushProviderOptions, type PushSenderFunction } from 
 export { SocketProvider, type SocketProviderOptions, type SocketEmitterFunction } from './providers/socket.provider.js';
 export { EmailProvider, type EmailProviderOptions, type EmailSenderFunction } from './providers/email.provider.js';
 export { SmsProvider, type SmsProviderOptions, type SmsSenderFunction } from './providers/sms.provider.js';
+export { WebhookProvider, type WebhookProviderOptions, type WebhookSenderFunction } from './providers/webhook.provider.js';
 export { MockProvider, type MockProviderOptions } from './providers/mock.provider.js';
 
 // Engines & Algorithms

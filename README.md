@@ -1,10 +1,11 @@
 # 📦 distributed-notifier
 
-[![npm version](https://img.shields.io/badge/npm-v1.0.0-blue?style=for-the-badge&logo=npm)](https://www.npmjs.com/)
+[![npm version](https://img.shields.io/badge/npm-v1.0.0-blue?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/distributed-notifier)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0_Strict-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Zero-Dependency Core](https://img.shields.io/badge/Zero--Setup-In--Memory_or_Redis-success?style=for-the-badge)]()
-[![Build & Test](https://img.shields.io/badge/Tests-33%20Passed-success?style=for-the-badge)]()
+[![Build & Test](https://img.shields.io/badge/Tests-38%20Passed-success?style=for-the-badge)]()
+[![CI Status](https://img.shields.io/badge/CI-Passing-brightgreen?style=for-the-badge&logo=githubactions)](https://github.com/rakiburrahman307/distributed-notifier/actions)
 
 **A production-grade, distributed notification engine engineered for high-throughput, fault-tolerant delivery across Push (FCM/APNs), In-App WebSockets, Email, SMS, and Webhooks.**
 
@@ -35,6 +36,8 @@
    - [8.5 Provider Traffic Shaping & Backpressure](#85-provider-traffic-shaping--backpressure)
    - [8.6 Durable Dead Letter Queue (DLQ) Inspection](#86-durable-dead-letter-queue-dlq-inspection)
    - [8.7 Bounded Bulk Delivery (`sendBulk`)](#87-bounded-bulk-delivery-sendbulk)
+   - [8.8 Built-in Webhook Delivery (Slack, Discord, Custom APIs)](#88-built-in-webhook-delivery-slack-discord-custom-apis)
+   - [8.9 Observability & Lifecycle Event Hooks (`EventEmitter`)](#89-observability--lifecycle-event-hooks-eventemitter)
 9. [Adding Custom Providers](#9-adding-custom-providers)
 10. [Resource Safety & Memory Guarantees](#10-resource-safety--memory-guarantees)
 11. [Testing & Verification](#11-testing--verification)
@@ -566,6 +569,76 @@ const bulkPayloads = users.map((u) => ({
 
 // Dispatches with controlled parallel pool of 10 workers
 const results = await notifier.sendBulk(bulkPayloads, { concurrency: 10, async: true });
+```
+
+---
+
+### 8.8 Built-in Webhook Delivery (Slack, Discord, Custom APIs)
+
+The built-in `WebhookProvider` delivers structured JSON payloads directly over HTTP/HTTPS with automatic timeout safety and custom headers:
+
+```typescript
+import { Notifier, WebhookProvider } from 'distributed-notifier';
+
+const notifier = new Notifier();
+
+// Register generic or channel-specific webhook provider
+const slackWebhook = new WebhookProvider({
+  name: 'slack-ops',
+  headers: { Authorization: 'Bearer xoxb-...' },
+  timeoutMs: 5000,
+});
+
+notifier.registerProvider(slackWebhook);
+
+// Dispatch notification with dynamic target URL
+await notifier.dispatch({
+  id: 'deploy_notice_1',
+  recipient: { id: 'devops-team' },
+  channels: ['webhook'],
+  title: 'Production Deployment Succeeded',
+  body: 'Release v1.2.0 is live across all cluster nodes',
+  metadata: {
+    webhookUrl: 'https://hooks.slack.com/services/T00/B00/XXXX',
+  },
+});
+```
+
+---
+
+### 8.9 Observability & Lifecycle Event Hooks (`EventEmitter`)
+
+`Notifier` extends Node.js `EventEmitter` with fully-typed lifecycle hooks. Easily stream events to Datadog, Prometheus, Slack alerts, or database audit trails without modifying core business logic:
+
+```typescript
+import { Notifier } from 'distributed-notifier';
+
+const notifier = new Notifier();
+
+// 1. Audit trail for every queued or suppressed job
+notifier.on('dispatched', (result, payload) => {
+  console.log(`[DISPATCHED] Job ${result.jobId} -> Status: ${result.status}`);
+});
+
+// 2. Metrics for successful third-party provider delivery
+notifier.on('delivered', (result, payload) => {
+  statsd.increment('notifications.delivered', { channels: result.channelsAttempted });
+});
+
+// 3. Automated alerting on delivery failure
+notifier.on('failed', (result, payload) => {
+  console.error(`[ALERT] Notification ${payload.id} delivery failed:`, result.channelResults);
+});
+
+// 4. Opt-out and suppression telemetry
+notifier.on('suppressed', ({ reason, payload }) => {
+  console.warn(`[SUPPRESSED] Notification ${payload.id} skipped due to ${reason}`);
+});
+
+// 5. Permanent dead-letter tracking
+notifier.on('dead_letter', (entry) => {
+  pagerDuty.trigger({ message: entry.error.message, payload: entry.job.payload });
+});
 ```
 
 ---

@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { NotifierConfig } from '../types/config.js';
 import {
   NotificationPayload,
@@ -27,11 +28,20 @@ import {
   InMemoryDeadLetterQueue,
   RedisDeadLetterQueue,
   IDeadLetterQueue,
+  DeadLetterEntry,
 } from '../engines/dead-letter-queue.js';
 import { FallbackRouter } from './fallback-router.js';
 import { DefaultLogger, Logger } from '../utils/logger.js';
 
-export class Notifier {
+export interface NotifierEventMap {
+  dispatched: (result: DispatchResult, payload: NotificationPayload) => void;
+  delivered: (result: NotificationResult, payload: NotificationPayload) => void;
+  failed: (result: NotificationResult, payload: NotificationPayload) => void;
+  suppressed: (event: { reason: NotificationStatus; payload: NotificationPayload }) => void;
+  dead_letter: (entry: DeadLetterEntry) => void;
+}
+
+export class Notifier extends EventEmitter {
   private readonly config: NotifierConfig;
   private readonly queueEngine: IQueueEngine;
   private readonly deduplication: IDeduplicationEngine;
@@ -46,6 +56,7 @@ export class Notifier {
   private isClosed = false;
 
   constructor(config: NotifierConfig = {}) {
+    super();
     this.config = config;
     this.logger = new DefaultLogger();
 
@@ -108,15 +119,15 @@ export class Notifier {
     );
     this.router = new FallbackRouter();
 
-    // 3. Register custom dead letter listener if provided in config
-    if (config.deadLetter?.onDeadLetter) {
-      const customListener = config.deadLetter.onDeadLetter;
-      this.deadLetterQueue.onDeadLetter((entry) => {
+    // 3. Register custom dead letter listener and emit 'dead_letter' event
+    this.deadLetterQueue.onDeadLetter((entry) => {
+      this.emit('dead_letter', entry);
+      if (config.deadLetter?.onDeadLetter) {
         const error = new Error(entry.error.message);
         error.stack = entry.error.stack;
-        customListener(entry.job, error);
-      });
-    }
+        config.deadLetter.onDeadLetter(entry.job, error);
+      }
+    });
 
     // 4. Hook Queue failure handler into DLQ
     if ('setFailureHandler' in this.queueEngine) {
@@ -257,31 +268,40 @@ export class Notifier {
     );
 
     if (isDuplicate) {
-      return {
+      const result: DispatchResult = {
         jobId: payload.id,
         notificationId: payload.id,
         status: 'SKIPPED_DUPLICATE',
         enqueuedAt: new Date(),
         idempotencyKey: payload.idempotencyKey,
       };
+      this.emit('suppressed', { reason: 'SKIPPED_DUPLICATE', payload });
+      this.emit('dispatched', result, payload);
+      return result;
     }
 
     if (isRateLimited) {
-      return {
+      const result: DispatchResult = {
         jobId: payload.id,
         notificationId: payload.id,
         status: 'RATE_LIMITED',
         enqueuedAt: new Date(),
       };
+      this.emit('suppressed', { reason: 'RATE_LIMITED', payload });
+      this.emit('dispatched', result, payload);
+      return result;
     }
 
     if (isUnsubscribed) {
-      return {
+      const result: DispatchResult = {
         jobId: payload.id,
         notificationId: payload.id,
         status: 'UNSUBSCRIBED',
         enqueuedAt: new Date(),
       };
+      this.emit('suppressed', { reason: 'UNSUBSCRIBED', payload });
+      this.emit('dispatched', result, payload);
+      return result;
     }
 
     // Check Quiet Hours
@@ -304,7 +324,7 @@ export class Notifier {
     // Enqueue for background worker processing
     const jobId = await this.queueEngine.enqueue(payload, { delayMs });
 
-    return {
+    const dispatchResult: DispatchResult = {
       jobId,
       notificationId: payload.id,
       status: delayMs > 0 ? 'SCHEDULED_QUIET_HOURS' : 'QUEUED',
@@ -312,6 +332,9 @@ export class Notifier {
       scheduledFor,
       idempotencyKey: payload.idempotencyKey,
     };
+
+    this.emit('dispatched', dispatchResult, payload);
+    return dispatchResult;
   }
 
   /**
@@ -328,7 +351,7 @@ export class Notifier {
     );
 
     if (isDuplicate) {
-      return {
+      const result: NotificationResult = {
         notificationId: payload.id,
         status: 'SKIPPED_DUPLICATE',
         channelsAttempted: [],
@@ -336,26 +359,32 @@ export class Notifier {
         isFallbackUsed: false,
         idempotencyKey: payload.idempotencyKey,
       };
+      this.emit('suppressed', { reason: 'SKIPPED_DUPLICATE', payload });
+      return result;
     }
 
     if (isRateLimited) {
-      return {
+      const result: NotificationResult = {
         notificationId: payload.id,
         status: 'RATE_LIMITED',
         channelsAttempted: [],
         channelResults: [],
         isFallbackUsed: false,
       };
+      this.emit('suppressed', { reason: 'RATE_LIMITED', payload });
+      return result;
     }
 
     if (isUnsubscribed) {
-      return {
+      const result: NotificationResult = {
         notificationId: payload.id,
         status: 'UNSUBSCRIBED',
         channelsAttempted: [],
         channelResults: [],
         isFallbackUsed: false,
       };
+      this.emit('suppressed', { reason: 'UNSUBSCRIBED', payload });
+      return result;
     }
 
     // Check Quiet Hours
@@ -465,7 +494,7 @@ export class Notifier {
         );
       }
 
-      return {
+      const notificationResult: NotificationResult = {
         notificationId: payload.id,
         status,
         channelsAttempted: results.map((r) => r.channel),
@@ -474,6 +503,14 @@ export class Notifier {
         isFallbackUsed,
         idempotencyKey: payload.idempotencyKey,
       };
+
+      if (anySuccess) {
+        this.emit('delivered', notificationResult, payload);
+      } else {
+        this.emit('failed', notificationResult, payload);
+      }
+
+      return notificationResult;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       this.logger.error(`Fatal delivery error for notification ${payload.id}:`, error);
@@ -491,7 +528,7 @@ export class Notifier {
         );
       }
 
-      return {
+      const failedResult: NotificationResult = {
         notificationId: payload.id,
         status: 'FAILED',
         channelsAttempted: payload.channels,
@@ -506,6 +543,9 @@ export class Notifier {
         ],
         isFallbackUsed: false,
       };
+
+      this.emit('failed', failedResult, payload);
+      return failedResult;
     }
   }
 
@@ -575,10 +615,29 @@ export class Notifier {
     return this.deadLetterQueue;
   }
 
+  public override on<K extends keyof NotifierEventMap>(event: K, listener: NotifierEventMap[K]): this;
+  public override on(event: string | symbol, listener: (...args: any[]) => void): this {
+    return super.on(event, listener);
+  }
+
+  public override once<K extends keyof NotifierEventMap>(event: K, listener: NotifierEventMap[K]): this;
+  public override once(event: string | symbol, listener: (...args: any[]) => void): this {
+    return super.once(event, listener);
+  }
+
+  public override emit<K extends keyof NotifierEventMap>(
+    event: K,
+    ...args: Parameters<NotifierEventMap[K]>
+  ): boolean;
+  public override emit(event: string | symbol, ...args: any[]): boolean {
+    return super.emit(event, ...args);
+  }
+
   public async close(): Promise<void> {
     if (this.isClosed) return;
     this.isClosed = true;
 
+    this.removeAllListeners();
     this.digestEngine.destroy();
     await this.queueEngine.close();
 
