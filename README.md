@@ -3,7 +3,6 @@
 [![npm version](https://img.shields.io/npm/v/distributed-notifier.svg?style=flat-square&color=0284c7)](https://www.npmjs.com/package/distributed-notifier)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0_Strict-3178c6.svg?style=flat-square)](https://www.typescriptlang.org/)
 [![Build & Test](https://img.shields.io/badge/Tests-38_Passing-10b981.svg?style=flat-square)]()
-[![CI Status](https://img.shields.io/badge/CI-Passing-10b981.svg?style=flat-square)](https://github.com/rakiburrahman307/distributed-notifier/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg?style=flat-square)](LICENSE)
 
 **A production-grade, distributed notification engine engineered for high-throughput, fault-tolerant delivery across Push (FCM/APNs), In-App WebSockets, Email, SMS, and Webhooks.**
