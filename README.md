@@ -1,6 +1,7 @@
 # distributed-notifier
 
 [![npm version](https://img.shields.io/npm/v/distributed-notifier.svg?style=flat-square&color=0284c7)](https://www.npmjs.com/package/distributed-notifier)
+[![npm downloads](https://img.shields.io/npm/dm/distributed-notifier.svg?style=flat-square&color=blue)](https://www.npmjs.com/package/distributed-notifier)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0_Strict-3178c6.svg?style=flat-square)](https://www.typescriptlang.org/)
 [![Build & Test](https://img.shields.io/badge/Tests-38_Passing-10b981.svg?style=flat-square)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg?style=flat-square)](LICENSE)
@@ -39,8 +40,9 @@
 9. [Adding Custom Providers](#9-adding-custom-providers)
 10. [Resource Safety & Memory Guarantees](#10-resource-safety--memory-guarantees)
 11. [Testing & Verification](#11-testing--verification)
-12. [Author & Maintainer](#12-author--maintainer)
-13. [License](#13-license)
+12. [Frequently Asked Questions (FAQ)](#12-frequently-asked-questions-faq)
+13. [Author & Maintainer](#13-author--maintainer)
+14. [License](#14-license)
 
 ---
 
@@ -51,6 +53,18 @@ Sending notifications in distributed environments involves critical challenges: 
 `distributed-notifier` is engineered as a complete, self-contained notification engine that can run in:
 * **Zero-Dependency In-Memory Mode**: Using a Binary Min-Heap $O(\log N)$ priority scheduler, token bucket rate limiter, and sliding-window deduplication for local development and single-server apps.
 * **True Distributed Redis Mode**: Powered by BullMQ background workers, atomic Redis `SET NX EX` deduplication, atomic Redis Lua script token buckets, and persistent Redis Dead Letter Queues for multi-instance horizontal scaling.
+
+### Why distributed-notifier?
+
+| Feature | `distributed-notifier` | Cloud SaaS (Novu / Knock / Courier) | DIY Custom Scripts |
+| :--- | :--- | :--- | :--- |
+| **Hosting & Privacy** | **100% Self-Hosted (Zero Data Leakage)** | Third-Party Cloud (Monthly Fees) | Self-Hosted |
+| **Local Zero-Setup Mode** | **Yes (Built-in In-Memory Min-Heap)** | No (Requires Cloud Account / Docker) | Ad-hoc / Fragile |
+| **Distributed Multi-Node** | **Yes (BullMQ + Redis Lua Scripts)** | Vendor Managed | Difficult to Build |
+| **Egress Traffic Shaper** | **Yes (Leaky Bucket Request Pacing)** | Vendor Rate Limits | Manual Try/Catch |
+| **Resilience & Breakers** | **Yes (Leak-Free Circuit Breaker)** | Platform-dependent | DIY |
+| **Vectorized Multicast** | **Yes (Chunks 500 FCM Tokens)** | Limited | Manual |
+| **License & Pricing** | **MIT (Free & Open Source Forever)** | Usage-Based Tiers ($$$) | Free |
 
 ---
 
@@ -1063,7 +1077,26 @@ npm run build
 
 ---
 
-## 12. Author & Maintainer
+## 12. Frequently Asked Questions (FAQ)
+
+#### Can I use distributed-notifier without Redis?
+Yes. By default, `distributed-notifier` runs in Zero-Dependency In-Memory mode. It uses an internal $O(\log N)$ Binary Min-Heap for priority scheduling, sliding-window maps for deduplication, and local token buckets for rate limiting. No Redis, Docker, or external daemon is required for local development or single-server monoliths.
+
+#### How does distributed-notifier eliminate duplicate notifications across clusters?
+In distributed mode, `distributed-notifier` leverages atomic Redis `SET key 1 NX EX <ttl>` commands. Even if multiple API servers receive duplicate webhook events or retry identical payloads concurrently, only the first request acquires the lock and is dispatched. All subsequent requests are safely suppressed as `SKIPPED_DUPLICATE`.
+
+#### How does the Fallback Router handle provider outages?
+When you define `channels: ['push']` and `fallbackChannels: ['sms', 'email']`, the engine attempts delivery via the primary provider first. If the primary provider times out or trips its Circuit Breaker, the router automatically fails over to the fallback channel in real time without dropping the message.
+
+#### How does Provider Traffic Shaping prevent HTTP 429 errors?
+External APIs like Twilio, SendGrid, and Firebase enforce strict per-second egress limits. `distributed-notifier` embeds an asynchronous Leaky Bucket traffic shaper directly into `BaseProvider`. Rapid bursts are queued in memory and dispatched at a smooth, constant rate (e.g. 25 req/sec), eliminating downstream 429 Too Many Requests errors.
+
+#### Is distributed-notifier safe against memory leaks?
+Yes. Every timer handle created by timeout promises and circuit breakers is captured and explicitly cleared in `Promise.race()` `finally` blocks. All internal in-memory stores have hard capacity limits with automated eviction, and `.close()` provides an idempotent, leak-free shutdown sequence.
+
+---
+
+## 13. Author & Maintainer
 
 **Md Rakibur Rahman**
 
@@ -1077,6 +1110,6 @@ npm run build
 
 ---
 
-## 13. License
+## 14. License
 
 Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
