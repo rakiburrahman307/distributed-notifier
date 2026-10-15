@@ -20,8 +20,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test --test-force-exit tests/**/*.test.ts"
+    "test": "node --import tsx --test --test-force-exit tests/**/*.test.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rakiburrahman307/distributed-notifier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rakiburrahman307/distributed-notifier/issues"
+  },
+  "homepage": "https://github.com/rakiburrahman307/distributed-notifier#readme",
   "keywords": [
     "notification",
     "distributed-systems",
